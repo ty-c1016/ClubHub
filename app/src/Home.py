@@ -1,4 +1,4 @@
-'''
+
 ##################################################
 # This is the main/entry-point file for the 
 # sample application for your project
@@ -14,9 +14,12 @@ logger = logging.getLogger(__name__)
 import streamlit as st
 from modules.nav import SideBarLinks
 
-# streamlit supports reguarl and wide layout (how the controls
-# are organized/displayed on the screen).
-st.set_page_config(layout = 'wide')
+# Page config
+st.set_page_config(
+    page_title="ClubHub",
+    page_icon="🎓",
+    layout="wide"
+)
 
 # If a user is at this page, we assume they are not 
 # authenticated.  So we change the 'authenticated' value
@@ -35,75 +38,23 @@ SideBarLinks(show_home=True)
 
 # set the title of the page and provide a simple prompt. 
 logger.info("Loading the Home page of the app")
-st.title('CS 3200 Project Template')
-st.write('\n\n')
-# st.write('### Overview:')
-# st.write('\n')
-st.write('#### HI! As which user would you like to log in?')
-
-# For each of the user personas for which we are implementing
-# functionality, we put a button on the screen that the user 
-# can click to MIMIC logging in as that mock user. 
-
-if st.button("Act as John, a Political Strategy Advisor", 
-            type = 'primary', 
-            use_container_width=True):
-    # when user clicks the button, they are now considered authenticated
-    st.session_state['authenticated'] = True
-    # we set the role of the current user
-    st.session_state['role'] = 'pol_strat_advisor'
-    # we add the first name of the user (so it can be displayed on 
-    # subsequent pages). 
-    st.session_state['first_name'] = 'John'
-    # finally, we ask streamlit to switch to another page, in this case, the 
-    # landing page for this particular user type
-    logger.info("Logging in as Political Strategy Advisor Persona")
-    st.switch_page('pages/00_Pol_Strat_Home.py')
-
-if st.button('Act as Mohammad, an USAID worker', 
-            type = 'primary', 
-            use_container_width=True):
-    st.session_state['authenticated'] = True
-    st.session_state['role'] = 'usaid_worker'
-    st.session_state['first_name'] = 'Mohammad'
-    st.switch_page('pages/10_USAID_Worker_Home.py')
-
-if st.button('Act as System Administrator', 
-            type = 'primary', 
-            use_container_width=True):
-    st.session_state['authenticated'] = True
-    st.session_state['role'] = 'administrator'
-    st.session_state['first_name'] = 'SysAdmin'
-    st.switch_page('pages/20_Admin_Home.py')
-'''
-
-
-# ON TOP IS ORIGINAL HOME PAGE! HERE IS A NEW ONE!
-
-import streamlit as st
-
-# Page config
-st.set_page_config(
-    page_title="ClubHub",
-    page_icon="🎓",
-    layout="wide"
-)
-
 # Title
 st.title("🎓 Welcome to ClubHub")
 st.markdown("### Centralized Campus Event Management Platform")
 st.divider()
 
-# Introduction
+#introduction
 st.markdown("""
 ClubHub is a platform that connects students, club organizers, administrators, and data analysts 
 to make campus life more organized and engaging.
 """)
 
-st.divider()
+st.st.divider()
+st.write('#### HI! As which user would you like to log in?')
 
-# Persona Selection
-st.markdown("## 👥 Select Your Role")
+# For each of the user personas for which we are implementing
+# functionality, we put a button on the screen that the user 
+# can click to MIMIC logging in as that mock user. 
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -118,6 +69,10 @@ with col1:
     - Invite friends
     """)
     if st.button("Enter as Ruth", use_container_width=True):
+        st.session_state['authenticated'] = True
+        st.session_state['role'] = 'student'
+        st.session_state['first_name'] = 'Ruth'
+        logger.info("Logging in as Student Persona")
         st.switch_page("pages/1_Ruth_Event_Discovery.py")
 
 with col2:
@@ -131,6 +86,10 @@ with col2:
     - View analytics
     """)
     if st.button("Enter as Sofia", use_container_width=True, disabled=True):
+        st.session_state['authenticated'] = True
+        st.session_state['role'] = 'event_coordinator'
+        st.session_state['first_name'] = 'Sofia'
+        logger.info("Logging in as Event Coordinator Persona")
         st.info("Coming soon!")
 
 with col3:
@@ -144,6 +103,10 @@ with col3:
     - Check metrics
     """)
     if st.button("Enter as David", use_container_width=True, disabled=True):
+        st.session_state['authenticated'] = True
+        st.session_state['role'] = 'administrator'
+        st.session_state['first_name'] = 'David'
+        logger.info("Logging in as System Administrator Persona")
         st.info("Coming soon!")
 
 with col4:
@@ -157,7 +120,12 @@ with col4:
     - Generate reports
     """)
     if st.button("Enter as Marcus", use_container_width=True, disabled=True):
-        st.info("Coming soon!")
+        st.session_state['authenticated'] = True
+        st.session_state['role'] = 'data_analyst'
+        st.session_state['first_name'] = 'Marcus'
+        logger.info("Logging in as Data Analyst Persona")
+        st.switch_page("pages/41_Engagement_Overview.py")
+# ON TOP IS ORIGINAL HOME PAGE! HERE IS A NEW ONE!
 
 st.divider()
 

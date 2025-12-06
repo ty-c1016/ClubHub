@@ -31,30 +31,35 @@ def MapDemoNav():
     st.sidebar.page_link("pages/02_Map_Demo.py", label="Map Demonstration", icon="🗺️")
 
 
-## ------------------------ Examples for Role of usaid_worker ------------------------
+## ------------------------ Data Analyst ------------------------
 
-def usaidWorkerHomeNav():
+def EngagementOverviewNav():
     st.sidebar.page_link(
-      "pages/10_USAID_Worker_Home.py", label="USAID Worker Home", icon="🏠"
+      "pages/41_Engagement_Overview.py", label="Engagement Overview", icon="📊"
     )
 
-def NgoDirectoryNav():
-    st.sidebar.page_link("pages/14_NGO_Directory.py", label="NGO Directory", icon="📁")
+def SearchInsightsNav():
+    st.sidebar.page_link("pages/42_Search_Insights.py", label="Search Insights", icon="🔍")
 
-def AddNgoNav():
-    st.sidebar.page_link("pages/15_Add_NGO.py", label="Add New NGO", icon="➕")
+def StudentDemoNav():
+    st.sidebar.page_link("pages/43_Student_Demographics.py", label="Student Demographics", icon="👥")
 
 def ApiTestNav():
     st.sidebar.page_link("pages/12_API_Test.py", label="Test the API", icon="🛜")
 
-def PredictionNav():
+def KeywordManagerNav():
     st.sidebar.page_link(
-        "pages/11_Prediction.py", label="Regression Prediction", icon="📈"
+        "pages/44_Keyword_Manager.py", label="Keyword Manager", icon="🗝️"
     )
 
-def ClassificationNav():
+def ClubAnalyticsNav():
     st.sidebar.page_link(
-        "pages/13_Classification.py", label="Classification Demo", icon="🌺"
+        "pages/45_Club_Analytics.py", label="Club Analytics", icon="🎯"
+    )
+
+def WeeklyReportNav():
+    st.sidebar.page_link(
+        "pages/46_Weekly_Report.py", label="Weekly Report", icon="🗓️"
     )
 
 
@@ -76,7 +81,7 @@ def SideBarLinks(show_home=False):
     """
 
     # add a logo to the sidebar always
-    st.sidebar.image("assets/logo.png", width=150)
+    st.sidebar.image("assets/ClubHub_logo.png", width=150)
 
     # If there is no logged in user, redirect to the Home (Landing) page
     if "authenticated" not in st.session_state:
@@ -96,14 +101,14 @@ def SideBarLinks(show_home=False):
             WorldBankVizNav()
             MapDemoNav()
 
-        # If the user role is usaid worker, show the Api Testing page
-        if st.session_state["role"] == "usaid_worker":
-            usaidWorkerHomeNav()
-            NgoDirectoryNav()
-            AddNgoNav()
-            PredictionNav()
-            ApiTestNav()
-            ClassificationNav()
+        # If the user role is data analyst, show the Api Testing page
+        if st.session_state["role"] == "data_analyst":
+            EngagementOverviewNav()
+            SearchInsightsNav()
+            StudentDemoNav()
+            KeywordManagerNav()
+            ClubAnalyticsNav()
+            WeeklyReportNav()
             
 
         # If the user is an administrator, give them access to the administrator pages
