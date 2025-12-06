@@ -103,12 +103,16 @@ def SideBarLinks(show_home=False):
 
         # If the user role is data analyst, show the Api Testing page
         if st.session_state["role"] == "data_analyst":
+            st.sidebar.title("Data Analyst Menu")
+            st.sidebar.divider()
             EngagementOverviewNav()
             SearchInsightsNav()
             StudentDemoNav()
             KeywordManagerNav()
             ClubAnalyticsNav()
             WeeklyReportNav()
+            ApiTestNav()
+
             
 
         # If the user is an administrator, give them access to the administrator pages

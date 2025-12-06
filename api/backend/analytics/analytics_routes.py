@@ -21,7 +21,7 @@ def get_engagement_metrics():
     """
     cursor = None
     try:
-        cursor = db.cursor(dictionary=True)
+        cursor = db.get_db().cursor(dictionary=True)
         query = """
             SELECT 
                 DATE(activity_date) AS date,
