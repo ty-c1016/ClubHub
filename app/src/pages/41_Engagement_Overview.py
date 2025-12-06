@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 from datetime import datetime
+from modules.nav import SideBarLinks
 
 # Page config
 st.set_page_config(
@@ -12,9 +13,8 @@ st.set_page_config(
 API_BASE_URL = "http://web-api:4000"
 
 # Sidebar navigation
-st.sidebar.title("Data Analyst Menu")
-st.sidebar.divider()
-st.sidebar.page_link("Home.py", label="← Back to Home")
+
+SideBarLinks()
 
 # Main page title
 st.title("📊 Engagement Overview")

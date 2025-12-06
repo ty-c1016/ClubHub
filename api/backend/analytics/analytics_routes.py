@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from backend.db_connection import db
 from mysql.connector import Error
 from flask import current_app
+from pymysql.cursors import DictCursor
 
 analytics_routes = Blueprint("analytics_routes", __name__)
 
@@ -21,23 +22,16 @@ def get_engagement_metrics():
     """
     cursor = None
     try:
-        cursor = db.cursor(dictionary=True)
+        cursor = db.get_db().cursor(DictCursor)
         query = """
-            SELECT 
-                DATE(activity_date) AS date,
-                COUNT(DISTINCT user_id) AS daily_active_users,
-                COUNT(DISTINCT CASE WHEN action_type = 'event_view'
-                      THEN entity_id END) AS events_viewed,
-                COUNT(DISTINCT CASE WHEN action_type = 'rsvp_created'
-                      THEN entity_id END) AS rsvps_created,
-                COUNT(DISTINCT CASE WHEN action_type = 'search'
-                      THEN log_id END) AS searches_performed,
-                COUNT(DISTINCT CASE WHEN action_type = 'check_in'
-                      THEN entity_id END) AS check_ins
-            FROM Audit_Logs
-            WHERE activity_date >= CURDATE() - INTERVAL 30 DAY
-            GROUP BY DATE(activity_date)
-            ORDER BY date DESC;
+            SELECT
+    DATE(timestamp) AS date,
+    COUNT(DISTINCT studentID) AS daily_active_users,
+    COUNT(DISTINCT attendanceID) AS total_attendances
+FROM Students_Event_Attendees
+WHERE timestamp >= CURDATE() - INTERVAL 30 DAY
+GROUP BY DATE(timestamp)
+ORDER BY date DESC;
         """
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -64,7 +58,7 @@ def get_search_query_analysis():
     """
     cursor = None
     try:
-        cursor = db.cursor(dictionary=True)
+        cursor = db.get_db().cursor(DictCursor)
         query = """
             SELECT 
                 sl.search_query,
@@ -107,7 +101,7 @@ def get_demographic_engagement():
     """
     cursor = None
     try:
-        cursor = db.cursor(dictionary=True)
+        cursor = db.get_db().cursor(DictCursor)
         query = """
             SELECT 
                 s.student_year,
@@ -162,7 +156,7 @@ def get_engagement_reports():
     """
     cursor = None
     try:
-        cursor = db.cursor(dictionary=True)
+        cursor = db.get_db().cursor(DictCursor)
         query = """
             SELECT 
                 report_id,
@@ -203,7 +197,7 @@ def generate_weekly_engagement_report():
     """
     cursor = None
     try:
-        cursor = db.cursor(dictionary=True)
+        cursor = db.get_db().cursor(DictCursor)
 
         insert_query = """
             INSERT INTO Engagement_Reports 

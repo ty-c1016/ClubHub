@@ -119,7 +119,7 @@ with col4:
     - Track demographics
     - Generate reports
     """)
-    if st.button("Enter as Marcus", use_container_width=True, disabled=True):
+    if st.button("Enter as Marcus", use_container_width=True):
         st.session_state['authenticated'] = True
         st.session_state['role'] = 'data_analyst'
         st.session_state['first_name'] = 'Marcus'
