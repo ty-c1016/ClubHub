@@ -8,10 +8,11 @@ from backend.db_connection import db
 from backend.simple.simple_routes import simple_routes
 from backend.ngos.ngo_routes import ngos
 from backend.events.event_routes import events
-from backend.clubs.club_routes import clubs
-from backend.students.student_routes import students
-from backend.admin.admin_routes import admin
-from backend.analytics.analytics_routes import analytics
+from backend.clubs.club_routes import club_routes
+from backend.students.student_routes import student_routes
+from backend.admin.admin_routes import admin_routes
+from backend.analytics.analytics_routes import analytics_routes
+from backend.invitations.invitations_routes import invitation_routes
 
 def create_app():
     app = Flask(__name__)
@@ -56,10 +57,11 @@ def create_app():
     app.register_blueprint(simple_routes)
     app.register_blueprint(ngos, url_prefix="/ngo")
     app.register_blueprint(events)
-    app.register_blueprint(clubs, url_prefix="/clubs")
-    app.register_blueprint(students, url_prefix="/students")
-    app.register_blueprint(admin, url_prefix="/admin")
-    app.register_blueprint(analytics, url_prefix="/analytics")
+    app.register_blueprint(club_routes, url_prefix="/clubs")
+    app.register_blueprint(student_routes, url_prefix="/students")
+    app.register_blueprint(admin_routes, url_prefix="/admin")
+    app.register_blueprint(analytics_routes, url_prefix="/analytics")
+    app.register_blueprint(invitation_routes, url_prefix="/invitations")
 
     # Don't forget to return the app object
     return app

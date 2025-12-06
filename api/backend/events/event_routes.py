@@ -12,7 +12,7 @@ events = Blueprint("events", __name__)
 def get_all_events():
     """Return all upcoming events with info, ordered by date"""
     try:
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         SELECT
@@ -33,18 +33,20 @@ def get_all_events():
 
         cursor.execute(query)
         events_list = cursor.fetchall()
-        cursor.close()
-
         return jsonify(events_list), 200
     except Error as e:
         current_app.logger.error(f'Error in get_all_events: {str(e)}')
         return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
 
 
 # POST /events - Create and publish events [Sofia-1]
 @events.route("/events", methods=["POST"])
 def create_event():
     """Create and publish events to ClubHub"""
+    cursor = None
     try:
         data = request.get_json()
 
@@ -53,7 +55,7 @@ def create_event():
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         INSERT INTO Events
@@ -72,22 +74,25 @@ def create_event():
             data.get("eventType")
         ))
 
-        db.get_db().commit()
+        db.commit()
         event_id = cursor.lastrowid
-        cursor.close()
 
         return jsonify({"message": "Event created successfully", "event_id": event_id}), 201
     except Error as e:
         current_app.logger.error(f'Error in create_event: {str(e)}')
         return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
 
 
 # GET /events/{id} - Returns info on a particular event [Ruth-4]
 @events.route("/events/<int:event_id>", methods=["GET"])
 def get_event(event_id):
     """Returns all information on a particular event"""
+    cursor = None
     try:
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         SELECT
@@ -110,6 +115,9 @@ def get_event(event_id):
     except Error as e:
         current_app.logger.error(f'Error in get_event: {str(e)}')
         return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
 
 
 # GET /events/{id}/rsvps - Return RSVP summary [Sofia-2]
@@ -117,7 +125,7 @@ def get_event(event_id):
 def get_event_rsvps(event_id):
     """Return the RSVP summary for an event"""
     try:
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         SELECT
@@ -150,7 +158,7 @@ def get_event_rsvps(event_id):
 def get_event_attendance(event_id):
     """Return attendance records for a particular event"""
     try:
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         SELECT
@@ -168,8 +176,6 @@ def get_event_attendance(event_id):
 
         cursor.execute(query, (event_id,))
         attendance = cursor.fetchall()
-        cursor.close()
-
         return jsonify(attendance), 200
     except Error as e:
         current_app.logger.error(f'Error in get_event_attendance: {str(e)}')
@@ -186,7 +192,7 @@ def check_in_student(event_id):
         if "student_id" not in data:
             return jsonify({"error": "student_id is required"}), 400
 
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         INSERT INTO Students_Event_Attendees (studentID, eventID, timestamp, status)
@@ -194,10 +200,8 @@ def check_in_student(event_id):
         """
 
         cursor.execute(query, (data["student_id"], event_id))
-        db.get_db().commit()
+        db.commit()
         attendance_id = cursor.lastrowid
-        cursor.close()
-
         return jsonify({"message": "Check-in successful", "attendance_id": attendance_id}), 201
     except Error as e:
         current_app.logger.error(f'Error in check_in_student: {str(e)}')
@@ -209,7 +213,7 @@ def check_in_student(event_id):
 def get_event_keywords(event_id):
     """Return keywords associated with an event, along with their search frequency"""
     try:
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         SELECT
@@ -226,8 +230,6 @@ def get_event_keywords(event_id):
 
         cursor.execute(query, (event_id,))
         keywords = cursor.fetchall()
-        cursor.close()
-
         return jsonify(keywords), 200
     except Error as e:
         current_app.logger.error(f'Error in get_event_keywords: {str(e)}')
@@ -244,7 +246,7 @@ def add_event_keyword(event_id):
         if "keyword" not in data:
             return jsonify({"error": "keyword is required"}), 400
 
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         # First, insert keyword if it doesn't exist
         cursor.execute("INSERT IGNORE INTO Keywords (keyword) VALUES (%s)", (data["keyword"],))
@@ -257,9 +259,7 @@ def add_event_keyword(event_id):
             (event_id, keyword_id)
         )
 
-        db.get_db().commit()
-        cursor.close()
-
+        db.commit()
         return jsonify({"message": "Keyword added successfully"}), 201
     except Error as e:
         current_app.logger.error(f'Error in add_event_keyword: {str(e)}')
@@ -276,7 +276,7 @@ def update_event_keywords(event_id):
         if "keywords" not in data or not isinstance(data["keywords"], list):
             return jsonify({"error": "keywords array is required"}), 400
 
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         # Delete existing keywords for this event
         cursor.execute("DELETE FROM Events_Event_Keywords WHERE eventID = %s", (event_id,))
@@ -291,9 +291,7 @@ def update_event_keywords(event_id):
                 (event_id, keyword_id)
             )
 
-        db.get_db().commit()
-        cursor.close()
-
+        db.commit()
         return jsonify({"message": "Keywords updated successfully"}), 200
     except Error as e:
         current_app.logger.error(f'Error in update_event_keywords: {str(e)}')
@@ -310,14 +308,14 @@ def delete_event_keyword(event_id):
         if not keyword_id:
             return jsonify({"error": "keyword_id query parameter is required"}), 400
 
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         cursor.execute(
             "DELETE FROM Events_Event_Keywords WHERE eventID = %s AND keywordID = %s",
             (event_id, keyword_id)
         )
 
-        db.get_db().commit()
+        db.commit()
         rows_affected = cursor.rowcount
         cursor.close()
 
@@ -335,7 +333,7 @@ def delete_event_keyword(event_id):
 def get_event_conflicts():
     """Return events that conflict with each other"""
     try:
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         SELECT
@@ -357,8 +355,6 @@ def get_event_conflicts():
 
         cursor.execute(query)
         conflicts = cursor.fetchall()
-        cursor.close()
-
         return jsonify(conflicts), 200
     except Error as e:
         current_app.logger.error(f'Error in get_event_conflicts: {str(e)}')
@@ -370,7 +366,7 @@ def get_event_conflicts():
 def get_event_validation():
     """Return recent events with validation status and errors"""
     try:
-        cursor = db.get_db().cursor()
+        cursor = db.cursor(dictionary=True)
 
         query = """
         SELECT
@@ -392,8 +388,6 @@ def get_event_validation():
 
         cursor.execute(query)
         validation_results = cursor.fetchall()
-        cursor.close()
-
         return jsonify(validation_results), 200
     except Error as e:
         current_app.logger.error(f'Error in get_event_validation: {str(e)}')

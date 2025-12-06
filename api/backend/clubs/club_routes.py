@@ -18,8 +18,8 @@ def get_clubs():
                 c.category,
                 c.budget,
                 COUNT(DISTINCT cm.student_id) AS member_count
-            FROM clubs c
-            LEFT JOIN club_memberships cm ON c.club_id = cm.club_id
+            FROM Clubs c
+            LEFT JOIN Club_Memberships cm ON c.club_id = cm.club_id
             GROUP BY c.club_id, c.club_name, c.description, c.category, c.budget
             ORDER BY c.club_name ASC
         """
@@ -39,7 +39,7 @@ def create_club():
         data = request.get_json()
         cursor = db.cursor(dictionary=True)
         query = """
-            INSERT INTO clubs 
+            INSERT INTO Clubs 
                 (club_id, club_name, description, category, budget, 
                  contact_email, created_datetime)
             VALUES 
@@ -74,9 +74,9 @@ def get_club_details(club_id):
                 c.contact_email,
                 COUNT(DISTINCT cm.student_id) AS member_count,
                 COUNT(DISTINCT e.event_id) AS event_count
-            FROM clubs c
-            LEFT JOIN club_memberships cm ON c.club_id = cm.club_id
-            LEFT JOIN events e ON c.club_id = e.club_id
+            FROM Clubs c
+            LEFT JOIN Club_Memberships cm ON c.club_id = cm.club_id
+            LEFT JOIN Events e ON c.club_id = e.club_id
             WHERE c.club_id = %s
             GROUP BY c.club_id, c.club_name, c.description, c.category, 
                      c.budget, c.benefits, c.competitiveness_level, c.contact_email
@@ -100,7 +100,7 @@ def update_club(club_id):
         data = request.get_json()
         cursor = db.cursor(dictionary=True)
         query = """
-            UPDATE clubs 
+            UPDATE Clubs 
             SET club_name = %s, description = %s, category = %s, 
                 budget = %s, contact_email = %s, last_updated = CURRENT_TIMESTAMP
             WHERE club_id = %s
@@ -123,7 +123,7 @@ def deactivate_club(club_id):
     try:
         cursor = db.cursor(dictionary=True)
         cursor.execute(
-            "UPDATE clubs SET active = FALSE WHERE club_id = %s", 
+            "UPDATE Clubs SET active = FALSE WHERE club_id = %s", 
             (club_id,)
         )
         db.commit()
@@ -153,8 +153,8 @@ def compare_clubs():
                 COUNT(DISTINCT cm.student_id) AS number_of_members,
                 c.benefits,
                 c.competitiveness_level
-            FROM clubs c
-            LEFT JOIN club_memberships cm ON c.club_id = cm.club_id
+            FROM Clubs c
+            LEFT JOIN Club_Memberships cm ON c.club_id = cm.club_id
             WHERE c.club_id IN (%s)
             GROUP BY c.club_id, c.club_name, c.description, c.budget, 
                      c.benefits, c.competitiveness_level
@@ -189,10 +189,10 @@ def get_club_rankings():
                 cr.rank_by_members,
                 cr.rank_by_events,
                 cr.ranking_period
-            FROM clubs c
-            LEFT JOIN club_memberships cm ON c.club_id = cm.club_id
-            LEFT JOIN events e ON c.club_id = e.club_id
-            LEFT JOIN club_rankings cr ON c.club_id = cr.club_id
+            FROM Clubs c
+            LEFT JOIN Club_Memberships cm ON c.club_id = cm.club_id
+            LEFT JOIN Events e ON c.club_id = e.club_id
+            LEFT JOIN Club_Rankings cr ON c.club_id = cr.club_id
             WHERE cr.ranking_period = %s
             GROUP BY c.club_id, c.club_name, c.budget, c.competitiveness_level,
                      cr.ranking_score, cr.rank_by_budget, cr.rank_by_members, 
@@ -226,8 +226,8 @@ def get_club_events(club_id):
                 SUM(CASE WHEN r.status = 'waitlisted' THEN 1 ELSE 0 END) AS waitlist_count,
                 (e.capacity - COUNT(r.rsvp_id)) AS remaining_capacity,
                 e.start_datetime
-            FROM events e
-            LEFT JOIN rsvps r ON e.event_id = r.event_id
+            FROM Events e
+            LEFT JOIN RSVPs r ON e.event_id = r.event_id
             WHERE e.club_id = %s
                 AND e.start_datetime {time_condition} CURRENT_TIMESTAMP
             GROUP BY e.event_id, e.event_name, e.capacity, e.start_datetime
@@ -261,8 +261,8 @@ def get_club_analytics(club_id):
                       NULLIF(COUNT(DISTINCT r.rsvp_id), 0), 2) AS attendance_rate,
                 ROUND(COUNT(DISTINCT a.attendance_id) * 100.0 / 
                       NULLIF(e.capacity, 0), 2) AS capacity_utilization
-            FROM events e
-            LEFT JOIN rsvps r ON e.event_id = r.event_id
+            FROM Events e
+            LEFT JOIN RSVPs r ON e.event_id = r.event_id
             LEFT JOIN attendance a ON e.event_id = a.event_id
             WHERE e.club_id = %s
                 AND e.end_datetime < CURRENT_TIMESTAMP
@@ -295,17 +295,17 @@ def get_similar_clubs(club_id):
                 COUNT(DISTINCT e.event_id) AS total_events,
                 AVG(ea.attendance_count) AS avg_attendance,
                 c.contact_email
-            FROM clubs c
-            JOIN events e ON c.club_id = e.club_id
+            FROM Clubs c
+            JOIN Events e ON c.club_id = e.club_id
             LEFT JOIN (
                 SELECT event_id, COUNT(*) AS attendance_count
-                FROM attendance
+                FROM Attendance
                 GROUP BY event_id
             ) ea ON e.event_id = ea.event_id
             WHERE c.club_id != %s
                 AND c.category IN (
                     SELECT category 
-                    FROM clubs 
+                    FROM Clubs 
                     WHERE club_id = %s
                 )
             GROUP BY c.club_id, c.club_name, c.category, c.contact_email
@@ -345,12 +345,12 @@ def get_club_performance():
                     WHEN AVG(event_attendance.attendance_count) >= 50 THEN 'High Performance'
                     ELSE 'Moderate Performance'
                 END AS performance_category
-            FROM clubs c
-            JOIN events e ON c.club_id = e.club_id
-            LEFT JOIN rsvps r ON e.event_id = r.event_id
+            FROM Clubs c
+            JOIN Events e ON c.club_id = e.club_id
+            LEFT JOIN RSVPs r ON e.event_id = r.event_id
             LEFT JOIN (
                 SELECT event_id, COUNT(*) AS attendance_count
-                FROM attendance
+                FROM Attendance
                 GROUP BY event_id
             ) event_attendance ON e.event_id = event_attendance.event_id
             WHERE e.start_datetime >= CURRENT_TIMESTAMP - INTERVAL %s DAY

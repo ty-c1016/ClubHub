@@ -20,7 +20,7 @@ def send_invitation():
 
         cursor = db.cursor(dictionary=True)
         query = """
-            INSERT INTO event_invitations (
+            INSERT INTO Event_Invitations (
                 invitation_id,
                 event_id,
                 sender_student_id,

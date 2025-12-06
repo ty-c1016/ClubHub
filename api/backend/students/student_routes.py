@@ -9,7 +9,7 @@ student_routes = Blueprint('student_routes', __name__)
 def get_students():
     try:
         cursor = db.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM students")
+        cursor.execute("SELECT * FROM Students")
         students = cursor.fetchall()
         return jsonify(students), 200
     except Error as e:
@@ -36,9 +36,9 @@ def get_student_rsvps(student_id):
                 e.location,
                 e.last_updated,
                 c.club_name
-                FROM rsvps r
-                    JOIN events e ON r.event_id = e.event_id
-                    JOIN clubs c ON e.club_id = c.club_id
+                FROM RSVPs r
+                    JOIN Events e ON r.event_id = e.event_id
+                    JOIN Clubs c ON e.club_id = c.club_id
                 WHERE r.student_id = %s
                     AND e.start_datetime > CURRENT_TIMESTAMP
                     AND r.status = 'confirmed'
@@ -61,7 +61,7 @@ def create_rsvp(student_id):
         data = request.get_json()
         cursor = db.cursor(dictionary=True)
         query = """
-            INSERT INTO rsvps 
+            INSERT INTO RSVPs 
                 (rsvp_id, event_id, student_id, status, created_datetime)
             VALUES 
                 (UUID(), %s, %s, 'confirmed', CURRENT_TIMESTAMP)
@@ -91,9 +91,9 @@ def get_student_invitations(student_id):
                 s.last_name AS sender_last_name,
                 ei.invitation_status,
                 ei.sent_datetime
-            FROM event_invitations ei
-            JOIN events e ON ei.event_id = e.event_id
-            JOIN students s ON ei.sender_student_id = s.student_id
+            FROM Event_Invitations ei
+            JOIN Events e ON ei.event_id = e.event_id
+            JOIN Students s ON ei.sender_student_id = s.student_id
             WHERE ei.recipient_student_id = %s
             ORDER BY ei.sent_datetime DESC
         """
@@ -113,7 +113,7 @@ def update_invitation_status(student_id, invitation_id):
         data = request.get_json()
         cursor = db.cursor(dictionary=True)
         query = """
-            UPDATE event_invitations 
+            UPDATE Event_Invitations 
             SET invitation_status = %s, updated_datetime = CURRENT_TIMESTAMP
             WHERE invitation_id = %s AND recipient_student_id = %s
         """

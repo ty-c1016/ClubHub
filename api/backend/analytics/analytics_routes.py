@@ -34,7 +34,7 @@ def get_engagement_metrics():
                       THEN log_id END) AS searches_performed,
                 COUNT(DISTINCT CASE WHEN action_type = 'check_in'
                       THEN entity_id END) AS check_ins
-            FROM audit_logs
+            FROM Audit_Logs
             WHERE activity_date >= CURDATE() - INTERVAL 30 DAY
             GROUP BY DATE(activity_date)
             ORDER BY date DESC;
@@ -72,7 +72,7 @@ def get_search_query_analysis():
                 SUM(CASE WHEN sl.results_count = 0 THEN 1 ELSE 0 END) AS zero_results_count,
                 AVG(sl.results_count) AS avg_results_count,
                 MAX(sl.search_datetime) AS last_searched
-            FROM search_logs sl
+            FROM Search_Logs sl
             WHERE sl.search_datetime >= NOW() - INTERVAL 30 DAY
             GROUP BY sl.search_query
             HAVING SUM(CASE WHEN sl.results_count = 0 THEN 1 ELSE 0 END) > 0
@@ -98,9 +98,9 @@ def get_demographic_engagement():
 
     Conceptually matches Part 3 SQL:
 
-    FROM students s
-      LEFT JOIN rsvps r ON s.student_id = r.student_id
-      LEFT JOIN attendance a ON s.student_id = a.student_id
+    FROM Students s
+      LEFT JOIN RSVPs r ON s.student_id = r.student_id
+      LEFT JOIN Attendance a ON s.student_id = a.student_id
            AND r.event_id = a.event_id
 
     with fields like s.student_year, s.major, r.created_datetime, etc.
@@ -121,10 +121,10 @@ def get_demographic_engagement():
                     NULLIF(COUNT(DISTINCT r.event_id), 0),
                     2
                 ) AS attendance_rate
-            FROM students s
-            LEFT JOIN rsvps r 
+            FROM Students s
+            LEFT JOIN RSVPs r 
                 ON s.student_id = r.student_id
-            LEFT JOIN attendance a 
+            LEFT JOIN Attendance a 
                 ON s.student_id = a.student_id
                AND r.event_id = a.event_id
             WHERE r.created_datetime >= NOW() - INTERVAL 90 DAY
@@ -174,7 +174,7 @@ def get_engagement_reports():
                 total_attendance,
                 total_searches,
                 generated_datetime
-            FROM engagement_reports
+            FROM Engagement_Reports
             ORDER BY generated_datetime DESC
             LIMIT 50;
         """
@@ -206,7 +206,7 @@ def generate_weekly_engagement_report():
         cursor = db.cursor(dictionary=True)
 
         insert_query = """
-            INSERT INTO engagement_reports 
+            INSERT INTO Engagement_Reports 
                 (report_period_start,
                  report_period_end,
                  total_active_users,
@@ -239,7 +239,7 @@ def generate_weekly_engagement_report():
                     THEN al.log_id
                 END) AS total_searches,
                 NOW() AS generated_datetime
-            FROM audit_logs al
+            FROM Audit_Logs al
             WHERE al.timestamp >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
               AND al.timestamp < CURDATE() + INTERVAL 1 DAY;
         """
