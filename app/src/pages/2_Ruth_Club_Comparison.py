@@ -31,7 +31,7 @@ st.divider()
 @st.cache_data(ttl=60)
 def fetch_all_clubs():
     try:
-        response = requests.get(f"{API_BASE_URL}/clubs", timeout=5)
+        response = requests.get(f"{API_BASE_URL}/clubs/clubs", timeout=5)
         if response.status_code == 200:
             return response.json()
         else:
@@ -44,10 +44,7 @@ def fetch_all_clubs():
 def fetch_club_comparison(club_ids):
     try:
         ids_str = ','.join(map(str, club_ids))
-        response = requests.get(
-            f"{API_BASE_URL}/clubs/compare?ids={ids_str}", 
-            timeout=5
-        )
+        response = requests.get(f"{API_BASE_URL}/clubs/clubs/compare?ids={ids_str}", timeout=5)
         if response.status_code == 200:
             return response.json()
         else:

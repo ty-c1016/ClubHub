@@ -12,14 +12,14 @@ def get_clubs():
         cursor = db.cursor(dictionary=True)
         query = """
             SELECT 
-                c.club_id,
-                c.club_name,
-                c.description,
-                c.category,
+                c.clubID as club_id,
+                c.name as club_name,
                 c.budget,
-            FROM clubs c
-            GROUP BY c.club_id, c.club_name, c.description, c.category, c.budget
-            ORDER BY c.club_name ASC
+                c.competitiveness_level
+            FROM Clubs c
+            LEFT JOIN club_memberships cm ON c.clubID = cm.club_id
+            GROUP BY c.clubID, c.name, c.budget, c.competitiveness_level
+            ORDER BY c.name ASC
         """
         cursor.execute(query)
         clubs = cursor.fetchall()
@@ -62,20 +62,20 @@ def get_club_details(club_id):
         cursor = db.cursor(dictionary=True)
         query = """
             SELECT 
-                c.club_id,
-                c.club_name,
-                c.description,
-                c.category,
+                c.clubID as club_id,
+                c.name as club_name,
+                c.adviser,
+                c.categoryID as category,
                 c.budget,
-                c.benefits,
+                c.type,
                 c.competitiveness_level,
-                c.contact_email,
-                COUNT(DISTINCT e.event_id) AS event_count
-            FROM clubs c
-            LEFT JOIN events e ON c.club_id = e.club_id
-            WHERE c.club_id = %s
-            GROUP BY c.club_id, c.club_name, c.description, c.category, 
-                     c.budget, c.benefits, c.competitiveness_level, c.contact_email
+                c.email as contact_email,
+                COUNT(DISTINCT e.eventID) AS event_count
+            FROM Clubs c
+            LEFT JOIN Events e ON c.clubID = e.clubID
+            WHERE c.clubID = %s
+            GROUP BY c.clubID, c.name, c.adviser, c.categoryID, 
+                     c.budget, c.type, c.competitiveness_level, c.email
         """
         cursor.execute(query, (club_id,))
         club = cursor.fetchone()
@@ -142,16 +142,16 @@ def compare_clubs():
         cursor = db.cursor(dictionary=True)
         query = """
             SELECT 
-                c.club_id,
-                c.club_name,
-                c.description AS curriculum,
+                c.clubID as club_id,
+                c.name as club_name,
+                c.adviser as curriculum,
                 c.budget,
-                c.benefits,
-                c.competitiveness_level
-            FROM clubs c
-            WHERE c.club_id IN (%s)
-            GROUP BY c.club_id, c.club_name, c.description, c.budget, 
-                     c.benefits, c.competitiveness_level
+                c.competitiveness_level,
+                COUNT(DISTINCT cm.student_id) AS number_of_members
+            FROM Clubs c
+            LEFT JOIN club_memberships cm ON c.clubID = cm.club_id
+            WHERE c.clubID IN (%s)
+            GROUP BY c.clubID, c.name, c.adviser, c.budget, c.competitiveness_level
         """ % ','.join(['%s'] * len(ids))
         cursor.execute(query, ids)
         comparison = cursor.fetchall()
@@ -163,35 +163,32 @@ def compare_clubs():
         cursor.close()
 
 # [NewStudent-1.6] Get club rankings
-@club_routes.route('/clubs/rankings', methods=['GET'])
+@club_routes.route('/rankings', methods=['GET'])
 def get_club_rankings():
     try:
         period = request.args.get('period', '2025-Q4')
-        sort_by = request.args.get('sortBy', 'overall')
+        
+        # Parse period (e.g., "2025-Q4" -> year=2025, quarter=4)
+        year, quarter = period.split('-Q')
+        year = int(year)
+        quarter = int(quarter)
         
         cursor = db.cursor(dictionary=True)
         query = """
             SELECT 
-                c.club_id,
-                c.club_name,
+                c.clubID as club_id,
+                c.name as club_name,
                 c.budget,
-                COUNT(DISTINCT e.event_id) AS total_events,
                 c.competitiveness_level,
-                r.ranking_score,
-                r.rank_by_budget,
-                r.rank_by_members,
-                r.rank_by_events,
-                r.ranking_period
-            FROM clubs c
-            LEFT JOIN events e ON c.club_id = e.club_id
-            LEFT JOIN rankings r ON c.club_id = r.club_id
-            WHERE r.ranking_period = %s
-            GROUP BY c.club_id, c.club_name, c.budget, c.competitiveness_level,
-                     r.ranking_score, r.rank_by_budget, r.rank_by_members, 
-                     r.rank_by_events, r.ranking_period
-            ORDER BY r.ranking_score DESC
+                r.rankingValue as ranking_score,
+                r.rankingType as ranking_type
+            FROM Clubs c
+            LEFT JOIN Rankings r ON c.clubID = r.clubID 
+                AND r.rankingYear = %s 
+                AND r.rankingQuarter = %s
+            ORDER BY r.rankingValue DESC
         """
-        cursor.execute(query, (period,))
+        cursor.execute(query, (year, quarter))
         rankings = cursor.fetchall()
         return jsonify(rankings), 200
     except Error as e:
