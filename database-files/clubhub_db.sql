@@ -825,3 +825,5 @@ INSERT INTO Searches_Search_Results (searchID, resultID) VALUES
 -- Food/cultural
 (47, 12),
 (48, 12);
+
+COMMIT;

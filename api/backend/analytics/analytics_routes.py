@@ -1,11 +1,61 @@
 from flask import Blueprint, jsonify, request
 from backend.db_connection import db
-from mysql.connector import Error
+from pymysql import Error
 from flask import current_app
 from pymysql.cursors import DictCursor
 from datetime import datetime, timedelta
 
 analytics_routes = Blueprint("analytics_routes", __name__)
+
+@analytics_routes.route("/analytics/debug/tables", methods=["GET"])
+def debug_tables():
+    cursor = None
+    try:
+        cursor = db.get_db().cursor(DictCursor)
+        
+        # Check if tables exist
+        cursor.execute("SHOW TABLES")
+        tables = cursor.fetchall()
+        
+        # Check counts for key tables
+        counts = {}
+        
+        cursor.execute("SELECT COUNT(*) as count FROM Events")
+        counts['Events'] = cursor.fetchone()['count']
+        
+        cursor.execute("SELECT COUNT(*) as count FROM Searches")
+        counts['Searches'] = cursor.fetchone()['count']
+        
+        cursor.execute("SELECT COUNT(*) as count FROM Search_Result")
+        counts['Search_Result'] = cursor.fetchone()['count']
+        
+        cursor.execute("SELECT COUNT(*) as count FROM Students")
+        counts['Students'] = cursor.fetchone()['count']
+        
+        return jsonify({
+            "tables": tables,
+            "counts": counts
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+
+@analytics_routes.route("/analytics/list-routes", methods=["GET"])
+def list_routes():
+    """List all registered routes"""
+    from flask import current_app
+    routes = []
+    for rule in current_app.url_map.iter_rules():
+        routes.append({
+            "endpoint": rule.endpoint,
+            "methods": list(rule.methods),
+            "path": str(rule)
+        })
+    return jsonify(routes), 200
+
 
 # GET /analytics/engagement/current-metrics
 @analytics_routes.route("/analytics/engagement/current-metrics", methods=["GET"])
@@ -195,61 +245,27 @@ def get_engagement_rate():
         if cursor:
             cursor.close()
 
-# GET /analytics/search-queries
-@analytics_routes.route("/analytics/search-queries", methods=["GET"])
-def get_search_query_analysis():
-    """
-    Return search query analytics based on search_logs:
-
-    Expects search_logs to have columns:
-      - search_query
-      - results_count
-      - search_datetime
-    """
-    cursor = None
-    try:
-        cursor = db.get_db().cursor(DictCursor)
-        query = """
-            SELECT 
-                sl.search_query,
-                COUNT(*) AS search_count,
-                SUM(CASE WHEN sl.results_count = 0 THEN 1 ELSE 0 END) AS zero_results_count,
-                AVG(sl.results_count) AS avg_results_count,
-                MAX(sl.search_datetime) AS last_searched
-            FROM Search_Logs sl
-            WHERE sl.search_datetime >= NOW() - INTERVAL 30 DAY
-            GROUP BY sl.search_query
-            HAVING SUM(CASE WHEN sl.results_count = 0 THEN 1 ELSE 0 END) > 0
-            ORDER BY search_count DESC, zero_results_count DESC;
-        """
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        return jsonify(rows), 200
-    except Error as e:
-        current_app.logger.error(f"Error fetching search query analysis: {e}")
-        return jsonify({"error": "Error fetching search query analysis"}), 500
-    finally:
-        if cursor:
-            cursor.close()
-
 # GET /analytics/search/summary
 @analytics_routes.route("/analytics/search/summary", methods=["GET"])
 def get_search_summary():
+    """Get search summary metrics (last 90 days)"""
     cursor = None
     try:
         cursor = db.get_db().cursor(DictCursor)
         
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
         
         query = """
             SELECT
                 COUNT(*) as total_searches,
-                COUNT(DISTINCT search_query) as unique_queries,
-                (SELECT COUNT(*) 
-                 FROM SearchLogs 
-                 WHERE search_date >= %s AND results_count = 0) as no_result_searches
-            FROM SearchLogs
-            WHERE search_date >= %s
+                COUNT(DISTINCT searchQuery) as unique_queries,
+                (SELECT COUNT(DISTINCT s.searchID) 
+                 FROM Searches s
+                 LEFT JOIN Searches_Search_Results ssr ON s.searchID = ssr.searchID
+                 WHERE DATE(s.timestamp) >= %s 
+                   AND ssr.resultID IS NULL) as no_result_searches
+            FROM Searches
+            WHERE DATE(timestamp) >= %s
         """
         
         cursor.execute(query, (start_date, start_date))
@@ -263,7 +279,78 @@ def get_search_summary():
         if cursor:
             cursor.close()
 
+# GET /analytics/search/top-keywords
+@analytics_routes.route("/analytics/search/top-keywords", methods=["GET"])
+def get_top_keywords():
+    """Get most searched keywords with CTR data"""
+    cursor = None
+    try:
+        cursor = db.get_db().cursor(DictCursor)
+        
+        start_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        
+        query = """
+            SELECT
+                s.searchQuery as query,
+                COUNT(DISTINCT s.searchID) as search_count,
+                COUNT(DISTINCT ssr.resultID) as total_results,
+                ROUND(COUNT(DISTINCT ssr.resultID) * 1.0 / COUNT(DISTINCT s.searchID), 1) as avg_results,
+                SUM(sr.clicks) as clicks,
+                ROUND(SUM(sr.clicks) * 100.0 / COUNT(DISTINCT s.searchID), 1) as ctr
+            FROM Searches s
+            LEFT JOIN Searches_Search_Results ssr ON s.searchID = ssr.searchID
+            LEFT JOIN Search_Result sr ON ssr.resultID = sr.resultID
+            WHERE DATE(s.timestamp) >= %s
+            GROUP BY s.searchQuery
+            HAVING search_count > 0
+            ORDER BY search_count DESC
+            LIMIT 20
+        """
+        
+        cursor.execute(query, (start_date,))
+        rows = cursor.fetchall()
+        return jsonify(rows), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error fetching top keywords: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
 
+# GET /analytics/search/no-results
+@analytics_routes.route("/analytics/search/no-results", methods=["GET"])
+def get_no_result_searches():
+    """Get searches that returned no results"""
+    cursor = None
+    try:
+        cursor = db.get_db().cursor(DictCursor)
+        
+        start_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        
+        query = """
+            SELECT
+                s.searchQuery as query,
+                COUNT(*) as search_count
+            FROM Searches s
+            LEFT JOIN Searches_Search_Results ssr ON s.searchID = ssr.searchID
+            WHERE DATE(s.timestamp) >= %s
+              AND ssr.resultID IS NULL
+            GROUP BY s.searchQuery
+            ORDER BY search_count DESC
+            LIMIT 20
+        """
+        
+        cursor.execute(query, (start_date,))
+        rows = cursor.fetchall()
+        return jsonify(rows), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error fetching no-result searches: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
 
 # GET /analytics/demographics
 @analytics_routes.route("/analytics/demographics", methods=["GET"])
