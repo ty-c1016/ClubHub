@@ -85,12 +85,13 @@ with col2:
     - Track attendance
     - View analytics
     """)
-    if st.button("Enter as Sofia", use_container_width=True, disabled=True):
+    if st.button("Enter as Sofia", use_container_width=True):
         st.session_state['authenticated'] = True
         st.session_state['role'] = 'event_coordinator'
         st.session_state['first_name'] = 'Sofia'
         logger.info("Logging in as Event Coordinator Persona")
-        st.info("Coming soon!")
+        st.switch_page("pages/6_Sofia_My_Events.py")
+
 
 with col3:
     st.markdown("### 🔧 Server Admin")
