@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import altair as alt
 
 # Page config
 st.set_page_config(
@@ -48,32 +49,37 @@ with col2:
 
 st.divider()
 
-# Fetch clubs data (we'll use /clubs endpoint and calculate rankings ourselves)
+# Insert line breaks into long club names so x-axis labels
+def wrap_label(text, width=12):
+    if not isinstance(text, str):
+        return text
+    text = text.strip()
+    return "\n".join(text[i:i+width] for i in range(0, len(text), width))
+
+# Fetch clubs data
 @st.cache_data(ttl=60)
 def fetch_clubs_for_ranking():
     try:
-        # Get all clubs
-        clubs_response = requests.get(f"{API_BASE_URL}/clubs", timeout=5)
+        # ✅ use the new API that already includes member_count & event_count
+        clubs_response = requests.get(
+            f"{API_BASE_URL}/clubs/clubs/with-metrics",
+            timeout=5
+        )
         if clubs_response.status_code != 200:
             return []
-        
+
         clubs = clubs_response.json()
-        
-        # For each club, get event count
+
+        # (optional but nice) make sure numeric fields are numeric
         for club in clubs:
-            try:
-                events_response = requests.get(
-                    f"{API_BASE_URL}/clubs/{club['club_id']}/events?upcoming=false",
-                    timeout=5
-                )
-                if events_response.status_code == 200:
-                    club['event_count'] = len(events_response.json())
-                else:
-                    club['event_count'] = 0
-            except:
-                club['event_count'] = 0
-        
+            if "budget" in club and isinstance(club["budget"], str):
+                try:
+                    club["budget"] = float(club["budget"])
+                except ValueError:
+                    pass
+
         return clubs
+
     except Exception as e:
         st.error(f"Could not fetch clubs: {e}")
         return []
@@ -92,8 +98,7 @@ else:
         "Budget": "budget",
         "Members": "member_count",
         "Events": "event_count",
-        "Competitiveness": "competitiveness_level"
-    }
+        "Competitiveness": "competitiveness_level"}
     
     sort_column = ranking_map[rank_by]
     
@@ -105,15 +110,43 @@ else:
         # Sort by selected metric (descending)
         df_sorted = df.sort_values(by=sort_column, ascending=False).reset_index(drop=True)
         df_sorted['rank'] = range(1, len(df_sorted) + 1)
-        
-        # Display bar chart
+
+        # 🥇🥈🥉 add medal indicator for top 3
+        df_sorted['medal'] = df_sorted['rank'].map({1: "🥇", 2: "🥈", 3: "🥉"}).fillna("")
+
+        # --- Bar chart with medals ---
         st.markdown(f"### 📊 Top 10 Clubs by {rank_by}")
-        
-        # Prepare chart data
-        chart_data = df_sorted.head(10)[['club_name', sort_column]].set_index('club_name')
-        
-        # Display chart
-        st.bar_chart(chart_data, height=400)
+
+        # Take top 10 and preserve descending order
+        top10 = df_sorted.head(10).copy()
+
+        # ✅ wrap long club names so labels show horizontally on multiple lines
+        top10["club_name_wrapped"] = top10["club_name"].apply(wrap_label)
+        x_order = list(top10["club_name_wrapped"])  # explicit x order: already sorted desc
+
+        # Base bar chart
+        base = alt.Chart(top10).encode(
+            x=alt.X("club_name_wrapped:N", sort=x_order, title="Club"),
+            y=alt.Y(f"{sort_column}:Q", title=rank_by),
+            tooltip=[
+                alt.Tooltip("club_name:N", title="Club"),
+                alt.Tooltip(f"{sort_column}:Q", title=rank_by),
+                alt.Tooltip("rank:Q", title="Rank")])
+
+        bars = base.mark_bar()
+
+        # Medal labels for top 3 only
+        top3 = top10[top10["rank"] <= 3]
+
+        medals = alt.Chart(top3).mark_text(
+            dy=-10,      # move text above bar
+            size=18
+        ).encode(
+            x=alt.X("club_name_wrapped:N", sort=x_order),
+            y=alt.Y(f"{sort_column}:Q"),
+            text="medal:N")
+
+        st.altair_chart(bars + medals, use_container_width=True)
         
         st.divider()
         
@@ -137,8 +170,7 @@ else:
             'budget': 'Budget ($)',
             'member_count': 'Members',
             'event_count': 'Events',
-            'competitiveness_level': 'Competitiveness (1-10)'
-        }
+            'competitiveness_level': 'Competitiveness (1-10)'}
         
         display_df = df_sorted[available_columns].rename(columns=column_names)
         
@@ -152,9 +184,7 @@ else:
                 "Budget ($)": st.column_config.NumberColumn(format="$%.2f"),
                 "Members": st.column_config.NumberColumn(format="%d"),
                 "Events": st.column_config.NumberColumn(format="%d"),
-                "Competitiveness (1-10)": st.column_config.NumberColumn(format="%d")
-            }
-        )
+                "Competitiveness (1-10)": st.column_config.NumberColumn(format="%d")})
         
         # Show top 3 highlights
         st.divider()

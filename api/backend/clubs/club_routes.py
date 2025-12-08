@@ -32,6 +32,40 @@ def get_clubs():
     finally:
         cursor.close()
 
+@club_routes.route('/clubs/with-metrics', methods=['GET'])
+def get_clubs_with_metrics():
+    try:
+        cursor = db.cursor(dictionary=True)
+        query = """
+            SELECT
+                c.clubID AS club_id,
+                c.name  AS club_name,
+                c.budget,
+                c.competitiveness_level,
+                COALESCE(m.member_count, 0)  AS member_count,
+                COALESCE(e.event_count, 0)   AS event_count
+            FROM Clubs c
+            LEFT JOIN (
+                SELECT club_id, COUNT(*) AS member_count
+                FROM club_memberships
+                GROUP BY club_id
+            ) m ON m.club_id = c.clubID
+            LEFT JOIN (
+                SELECT clubID, COUNT(*) AS event_count
+                FROM Events
+                GROUP BY clubID
+            ) e ON e.clubID = c.clubID
+            ORDER BY c.name;
+        """
+        cursor.execute(query)
+        clubs = cursor.fetchall()
+        return jsonify(clubs), 200
+    except Error as err:
+        current_app.logger.error(f"Error fetching clubs with metrics: {err}")
+        return jsonify({"error": "Error fetching clubs"}), 500
+    finally:
+        cursor.close()
+
 # Create new club
 @club_routes.route('/clubs', methods=['POST'])
 def create_club():
