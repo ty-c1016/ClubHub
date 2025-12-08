@@ -40,12 +40,11 @@ with col1:
     )
 
 with col2:
-    st.markdown("### 📅 Period:")
-    period = st.selectbox(
-        "Select period:",
-        options=["2024-Q4", "2024-Q3", "2024-Q2", "2024-Q1", "2025-Q1"],
-        label_visibility="collapsed"
-    )
+    st.markdown("### 📅 Current Period: 2024")
+#    period = st.selectbox(
+#        "Select period:",
+#        options=["2024-Q4", "2024-Q3", "2024-Q2", "2024-Q1", "2025-Q1"],
+#        label_visibility="collapsed")
 
 st.divider()
 
